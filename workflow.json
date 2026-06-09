@@ -1,0 +1,179 @@
+{
+  "name": "Resume Evaluator",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "resume-evaluator",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        0
+      ],
+      "id": "2cb83ae5-4cc1-4f8b-ac72-c7d58b925688",
+      "name": "Webhook",
+      "webhookId": "04712be4-213a-46df-b264-70c760dc64a8"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are a resume analysis expert.\n\nExtract the following from this resume text:\n1. Technical skills (programming languages, tools, frameworks)\n2. Soft skills\n3. Years of experience\n4. Education\n5. Job titles held\n\nResume text:\n{{ $json.body.resume_text }}\n\nRespond in JSON format only. No extra text, no markdown, no backticks.",
+        "hasOutputParser": true,
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        288,
+        0
+      ],
+      "id": "ba493821-a069-4ad7-8bb7-4095e382c4b5",
+      "name": "Basic LLM Chain",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an expert technical recruiter.\n\nGiven the following:\n\nCANDIDATE SKILLS:\n{{ $('Basic LLM Chain').item.json.text }}\n\nJOB DESCRIPTION:\n{{ $json.body.job_description }}\n\nPlease provide:\n1. RELEVANCE SCORE: A score from 0-100 showing how well this candidate fits\n2. MATCHING SKILLS: Skills the candidate has that match the job\n3. GAP ANALYSIS: Important skills from the job description the candidate is missing\n4. RECOMMENDATION: Hire / Maybe / Reject with a 2 sentence reason\n\nRespond in JSON format only. No extra text, no markdown, no backticks.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        672,
+        0
+      ],
+      "id": "6b9ad25a-32dd-4219-83d6-7eb96b0124da",
+      "name": "Basic LLM Chain1"
+    },
+    {
+      "parameters": {
+        "respondWith": "allIncomingItems",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.5,
+      "position": [
+        1040,
+        48
+      ],
+      "id": "ffa0816d-012c-42c4-910d-89ecfa197b86",
+      "name": "Respond to Webhook"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        272,
+        208
+      ],
+      "id": "55411112-eaa6-4024-953c-46d0d7515214",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "s8twlfv4kfXEgjFu",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        608,
+        208
+      ],
+      "id": "8b35508b-3933-4570-9906-8f4d0465aab2",
+      "name": "Groq Chat Model1",
+      "credentials": {
+        "groqApi": {
+          "id": "s8twlfv4kfXEgjFu",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain1": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "9d76b356-97da-4ea3-84e7-4a67559bfd47",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "7f812f546d8433c7855636b11aa20883e5f29e17638245334703103b2eb3e997"
+  },
+  "id": "aPVKiAt1v9eXp2zD",
+  "tags": []
+}

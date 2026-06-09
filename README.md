@@ -98,7 +98,7 @@ Simply open `index.html` in your browser (double-click the file). Upload a resum
 
 ---
 
-## How the n8n Workflow Works
+## How the n8n Workflow Works:
 
 ```
 Webhook (POST)

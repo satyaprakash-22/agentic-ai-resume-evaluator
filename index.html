@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>AI Resume Evaluator | Powered by Groq + n8n</title>
   <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet"/>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -181,15 +183,42 @@
       color: var(--muted);
       font-family: 'Space Mono', monospace;
       font-size: 12px;
+      line-height: 1.8;
     }
 
     .upload-text span { color: var(--accent2); }
 
+    .file-formats {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .format-badge {
+      background: rgba(6,182,212,0.1);
+      border: 1px solid rgba(6,182,212,0.25);
+      color: var(--accent2);
+      font-family: 'Space Mono', monospace;
+      font-size: 10px;
+      letter-spacing: 1px;
+      padding: 3px 10px;
+      border-radius: 100px;
+    }
+
     .file-name {
-      margin-top: 10px;
+      margin-top: 12px;
       font-family: 'Space Mono', monospace;
       font-size: 12px;
       color: var(--success);
+      display: none;
+    }
+
+    .file-processing {
+      margin-top: 12px;
+      font-family: 'Space Mono', monospace;
+      font-size: 12px;
+      color: var(--warning);
       display: none;
     }
 
@@ -408,10 +437,17 @@
     <div class="card">
       <div class="card-label">Step 02 — Candidate Resume</div>
       <div class="upload-area" id="uploadArea">
-        <input type="file" id="resumeFile" accept=".txt" onchange="handleFileUpload(event)"/>
+        <input type="file" id="resumeFile" accept=".pdf,.doc,.docx,.txt" onchange="handleFileUpload(event)"/>
         <div class="upload-icon">📄</div>
-        <div class="upload-text">Drop a <span>.txt</span> file or <span>click to browse</span></div>
+        <div class="upload-text">Drop your resume file here or <span>click to browse</span></div>
+        <div class="file-formats">
+          <span class="format-badge">PDF</span>
+          <span class="format-badge">DOCX</span>
+          <span class="format-badge">DOC</span>
+          <span class="format-badge">TXT</span>
+        </div>
         <div class="file-name" id="fileName"></div>
+        <div class="file-processing" id="fileProcessing">⏳ Extracting text from file...</div>
       </div>
       <div class="or-divider">OR PASTE MANUALLY</div>
       <textarea id="resumeText" placeholder="Paste resume text here..."></textarea>
@@ -462,29 +498,84 @@
   <script>
     const WEBHOOK_URL = 'http://localhost:5678/webhook/resume-evaluator';
 
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (!file) return;
-      document.getElementById('fileName').textContent = '✓ ' + file.name;
-      document.getElementById('fileName').style.display = 'block';
-      const reader = new FileReader();
-      reader.onload = (e) => { document.getElementById('resumeText').value = e.target.result; };
-      reader.readAsText(file);
+    // Set PDF.js worker
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    async function extractTextFromPDF(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+      let fullText = '';
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i);
+        const content = await page.getTextContent();
+        const pageText = content.items.map(item => item.str).join(' ');
+        fullText += pageText + '\n';
+      }
+      return fullText.trim();
     }
 
+    async function extractTextFromDOCX(file) {
+      const arrayBuffer = await file.arrayBuffer();
+      const result = await mammoth.extractRawText({ arrayBuffer });
+      return result.value.trim();
+    }
+
+    async function handleFileUpload(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const fileNameEl = document.getElementById('fileName');
+      const processingEl = document.getElementById('fileProcessing');
+      const resumeTextArea = document.getElementById('resumeText');
+
+      fileNameEl.style.display = 'none';
+      processingEl.style.display = 'block';
+
+      const ext = file.name.split('.').pop().toLowerCase();
+
+      try {
+        let extractedText = '';
+
+        if (ext === 'pdf') {
+          extractedText = await extractTextFromPDF(file);
+        } else if (ext === 'docx' || ext === 'doc') {
+          extractedText = await extractTextFromDOCX(file);
+        } else if (ext === 'txt') {
+          extractedText = await file.text();
+        } else {
+          showError('Unsupported file type. Please upload a PDF, DOCX, DOC, or TXT file.');
+          processingEl.style.display = 'none';
+          return;
+        }
+
+        if (!extractedText || extractedText.length < 20) {
+          showError('Could not extract text from this file. Try copying and pasting the resume text manually.');
+          processingEl.style.display = 'none';
+          return;
+        }
+
+        resumeTextArea.value = extractedText;
+        processingEl.style.display = 'none';
+        fileNameEl.textContent = '✓ ' + file.name + ' (' + extractedText.length + ' characters extracted)';
+        fileNameEl.style.display = 'block';
+
+      } catch (err) {
+        processingEl.style.display = 'none';
+        showError('Error reading file: ' + err.message + '\n\nTry pasting the resume text manually instead.');
+      }
+    }
+
+    // Drag and drop
     const uploadArea = document.getElementById('uploadArea');
     uploadArea.addEventListener('dragover', (e) => { e.preventDefault(); uploadArea.classList.add('dragover'); });
     uploadArea.addEventListener('dragleave', () => uploadArea.classList.remove('dragover'));
-    uploadArea.addEventListener('drop', (e) => {
+    uploadArea.addEventListener('drop', async (e) => {
       e.preventDefault();
       uploadArea.classList.remove('dragover');
       const file = e.dataTransfer.files[0];
       if (file) {
-        const reader = new FileReader();
-        reader.onload = (ev) => { document.getElementById('resumeText').value = ev.target.result; };
-        reader.readAsText(file);
-        document.getElementById('fileName').textContent = '✓ ' + file.name;
-        document.getElementById('fileName').style.display = 'block';
+        document.getElementById('resumeFile').files = e.dataTransfer.files;
+        await handleFileUpload({ target: { files: [file] } });
       }
     });
 
@@ -512,13 +603,12 @@
           body: JSON.stringify({ resume_text: resumeText, job_description: jobDesc })
         });
 
-        // Always read as text first
         const rawText = await response.text();
         debugBox.textContent = 'RAW n8n RESPONSE:\n' + rawText;
         debugBox.style.display = 'block';
 
         if (!rawText || rawText.trim() === '') {
-          showError('n8n returned an empty response.\n\nFix:\n1. In n8n, double-click Webhook node\n2. Click "Listen for test event"\n3. Then click Evaluate again');
+          showError('n8n returned an empty response.\n\nFix:\n1. In n8n, make sure workflow is Published\n2. Open http://localhost:5678 and check workflow is Active');
           return;
         }
 
@@ -529,8 +619,8 @@
         displayResults(data);
 
       } catch (err) {
-        if (err.message.includes('fetch')) {
-          showError('Cannot reach n8n at localhost:5678\n\nFix:\n1. Open CMD → cd D:\\resume-evaluator\n2. Run: docker-compose up -d\n3. Open http://localhost:5678\n4. Make sure workflow is Published');
+        if (err.message.includes('fetch') || err.message.includes('Failed')) {
+          showError('Cannot reach n8n at localhost:5678\n\nFix:\n1. Open CMD\n2. Run: docker run -it --rm --name n8n -p 5678:5678 -v n8n_data:/home/node/.n8n docker.n8n.io/n8nio/n8n\n3. Make sure workflow is Published');
         } else {
           showError('Error: ' + err.message);
         }
@@ -550,69 +640,67 @@
     }
 
     function flattenSkills(data) {
-  if (Array.isArray(data)) return data.map(String);
-  if (typeof data === 'object' && data !== null) {
-    // Flatten nested object like {Languages: [...], Tools: [...]}
-    return Object.values(data).flat().map(String);
-  }
-  if (typeof data === 'string') return data.split(',').map(s => s.trim()).filter(Boolean);
-  return [];
-}
+      if (Array.isArray(data)) return data.map(String);
+      if (typeof data === 'object' && data !== null) {
+        return Object.values(data).flat().map(String);
+      }
+      if (typeof data === 'string') return data.split(',').map(s => s.trim()).filter(Boolean);
+      return [];
+    }
 
     function displayResults(data) {
-  let result = null;
+      let result = null;
 
-  try {
-    let raw = Array.isArray(data) ? data[0] : data;
-    if (raw && raw.json) raw = raw.json;
-    if (raw && raw.text) {
-      let cleaned = raw.text.replace(/```json/gi, '').replace(/```/g, '').trim();
-      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-      if (jsonMatch) cleaned = jsonMatch[0];
-      result = JSON.parse(cleaned);
-    } else {
-      result = raw;
+      try {
+        let raw = Array.isArray(data) ? data[0] : data;
+        if (raw && raw.json) raw = raw.json;
+        if (raw && raw.text) {
+          let cleaned = raw.text.replace(/```json/gi, '').replace(/```/g, '').trim();
+          const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+          if (jsonMatch) cleaned = jsonMatch[0];
+          result = JSON.parse(cleaned);
+        } else {
+          result = raw;
+        }
+      } catch(e) {
+        document.getElementById('reasonText').textContent = 'Parse error: ' + e.message;
+        document.getElementById('results').style.display = 'block';
+        return;
+      }
+
+      document.getElementById('results').style.display = 'block';
+      setTimeout(() => {
+        document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+
+      const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.score || 0);
+      animateScore(score);
+
+      const recValue = result.RECOMMENDATION;
+      const recText = String(
+        recValue && recValue.RECOMMENDATION ? recValue.RECOMMENDATION : recValue || 'Maybe'
+      ).toLowerCase();
+      const recBadge = document.getElementById('recommendationBadge');
+      if (recText.includes('hire') && !recText.includes('not') && !recText.includes('reject')) {
+        recBadge.innerHTML = '<span class="recommendation-badge rec-hire">✅ Recommended: Hire</span>';
+      } else if (recText.includes('reject')) {
+        recBadge.innerHTML = '<span class="recommendation-badge rec-reject">❌ Recommended: Reject</span>';
+      } else {
+        recBadge.innerHTML = '<span class="recommendation-badge rec-maybe">⚠️ Recommended: Maybe</span>';
+      }
+
+      renderTags('matchingSkills', flattenSkills(result.MATCHING_SKILLS || result.matching_skills || []), 'skill-tag');
+      renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
+
+      const reason = result.RECOMMENDATION_REASON ||
+               result.recommendation_reason ||
+               result.reason ||
+               result.notes ||
+               (recValue && typeof recValue === 'object' ? JSON.stringify(recValue) : '') ||
+               (typeof recValue === 'string' ? recValue : '') || 
+               'No recruiter notes available.';
+      document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
     }
-  } catch(e) {
-    document.getElementById('reasonText').textContent = 'Parse error: ' + e.message;
-    document.getElementById('results').style.display = 'block';
-    return;
-  }
-
-  document.getElementById('results').style.display = 'block';
-  setTimeout(() => {
-    document.getElementById('results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-  }, 100);
-
-  // Score
-  const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.score || 0);
-  animateScore(score);
-
-  // Recommendation
-  const recValue = result.RECOMMENDATION;
-  const recText = String(
-    recValue && recValue.RECOMMENDATION ? recValue.RECOMMENDATION : recValue || 'Maybe'
-  ).toLowerCase();
-  const recBadge = document.getElementById('recommendationBadge');
-  if (recText.includes('hire') && !recText.includes('not') && !recText.includes('reject')) {
-    recBadge.innerHTML = '<span class="recommendation-badge rec-hire">✅ Recommended: Hire</span>';
-  } else if (recText.includes('reject')) {
-    recBadge.innerHTML = '<span class="recommendation-badge rec-reject">❌ Recommended: Reject</span>';
-  } else {
-    recBadge.innerHTML = '<span class="recommendation-badge rec-maybe">⚠️ Recommended: Maybe</span>';
-  }
-
-  // Skills and gaps
-  renderTags('matchingSkills', flattenSkills(result.MATCHING_SKILLS || result.matching_skills || []), 'skill-tag');
-  renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
-
-  // Reason
-  const reason = (recValue && recValue.REASON) ||
-                 (recValue && recValue.RECOMMENDATION_REASON) ||
-                 result.RECOMMENDATION_REASON || result.reason ||
-                 (typeof recValue === 'string' ? recValue : '') || '';
-  document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
-}
 
     function renderTags(elementId, data, tagClass) {
       const el = document.getElementById(elementId);

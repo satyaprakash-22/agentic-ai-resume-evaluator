@@ -563,19 +563,13 @@
   let result = null;
 
   try {
-    // Unwrap array
     let raw = Array.isArray(data) ? data[0] : data;
-
-    // Unwrap json wrapper
     if (raw && raw.json) raw = raw.json;
-
-    // If text field exists, parse it
     if (raw && raw.text) {
       let cleaned = raw.text.replace(/```json/gi, '').replace(/```/g, '').trim();
-// Extract JSON object if there's extra text around it
-const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-if (jsonMatch) cleaned = jsonMatch[0];
-result = JSON.parse(cleaned);
+      const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+      if (jsonMatch) cleaned = jsonMatch[0];
+      result = JSON.parse(cleaned);
     } else {
       result = raw;
     }
@@ -591,28 +585,32 @@ result = JSON.parse(cleaned);
   }, 100);
 
   // Score
-  const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.RelevanceScore || result.score || 0);
+  const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.score || 0);
   animateScore(score);
 
   // Recommendation
-  const rec = String(result.RECOMMENDATION || 'Maybe').toLowerCase();
+  const recValue = result.RECOMMENDATION;
+  const recText = String(
+    recValue && recValue.RECOMMENDATION ? recValue.RECOMMENDATION : recValue || 'Maybe'
+  ).toLowerCase();
   const recBadge = document.getElementById('recommendationBadge');
-  if (rec.includes('hire') && !rec.includes('not') && !rec.includes('reject')) {
+  if (recText.includes('hire') && !recText.includes('not') && !recText.includes('reject')) {
     recBadge.innerHTML = '<span class="recommendation-badge rec-hire">✅ Recommended: Hire</span>';
-  } else if (rec.includes('reject')) {
+  } else if (recText.includes('reject')) {
     recBadge.innerHTML = '<span class="recommendation-badge rec-reject">❌ Recommended: Reject</span>';
   } else {
     recBadge.innerHTML = '<span class="recommendation-badge rec-maybe">⚠️ Recommended: Maybe</span>';
   }
 
+  // Skills and gaps
   renderTags('matchingSkills', flattenSkills(result.MATCHING_SKILLS || result.matching_skills || []), 'skill-tag');
-renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
+  renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
 
   // Reason
-  const rec = result.RECOMMENDATION;
-const reason = (rec && rec.REASON) || (rec && rec.RECOMMENDATION_REASON) || 
-               result.RECOMMENDATION_REASON || result.reason || 
-               (typeof rec === 'string' ? rec : '') || '';
+  const reason = (recValue && recValue.REASON) ||
+                 (recValue && recValue.RECOMMENDATION_REASON) ||
+                 result.RECOMMENDATION_REASON || result.reason ||
+                 (typeof recValue === 'string' ? recValue : '') || '';
   document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
 }
 

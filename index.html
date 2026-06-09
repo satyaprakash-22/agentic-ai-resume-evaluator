@@ -417,7 +417,7 @@
       <textarea id="resumeText" placeholder="Paste resume text here..."></textarea>
     </div>
 
-    <button class="btn" id="evaluateBtn" onclick="evaluate()">
+    <button class="btn" id="evaluateBtn" onclick="runEvaluation()">
       <span class="btn-text">⚡ Evaluate Resume</span>
       <span class="loading"><span class="spinner"></span> Analyzing with AI...</span>
     </button>
@@ -488,7 +488,7 @@
       }
     });
 
-    async function evaluateResume() {
+    async function runEvaluation() {
       const jobDesc = document.getElementById('jobDesc').value.trim();
       const resumeText = document.getElementById('resumeText').value.trim();
       const btn = document.getElementById('evaluateBtn');

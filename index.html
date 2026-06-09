@@ -562,7 +562,10 @@
     // If text field exists, parse it
     if (raw && raw.text) {
       let cleaned = raw.text.replace(/```json/gi, '').replace(/```/g, '').trim();
-      result = JSON.parse(cleaned);
+// Extract JSON object if there's extra text around it
+const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+if (jsonMatch) cleaned = jsonMatch[0];
+result = JSON.parse(cleaned);
     } else {
       result = raw;
     }
@@ -578,7 +581,7 @@
   }, 100);
 
   // Score
-  const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.score || 60);
+  const score = parseInt(result.RELEVANCE_SCORE || result.relevance_score || result.RelevanceScore || result.score || 0);
   animateScore(score);
 
   // Recommendation

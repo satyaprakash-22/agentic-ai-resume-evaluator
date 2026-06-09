@@ -549,6 +549,16 @@
       return null;
     }
 
+    function flattenSkills(data) {
+  if (Array.isArray(data)) return data.map(String);
+  if (typeof data === 'object' && data !== null) {
+    // Flatten nested object like {Languages: [...], Tools: [...]}
+    return Object.values(data).flat().map(String);
+  }
+  if (typeof data === 'string') return data.split(',').map(s => s.trim()).filter(Boolean);
+  return [];
+}
+
     function displayResults(data) {
   let result = null;
 
@@ -595,14 +605,14 @@ result = JSON.parse(cleaned);
     recBadge.innerHTML = '<span class="recommendation-badge rec-maybe">⚠️ Recommended: Maybe</span>';
   }
 
-  // Matching skills
-  renderTags('matchingSkills', result.MATCHING_SKILLS || result.matching_skills || [], 'skill-tag');
-
-  // Gaps
-  renderTags('gapAnalysis', result.GAP_ANALYSIS || result.gap_analysis || [], 'gap-tag');
+  renderTags('matchingSkills', flattenSkills(result.MATCHING_SKILLS || result.matching_skills || []), 'skill-tag');
+renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
 
   // Reason
-  const reason = result.RECOMMENDATION_REASON || result.reason || result.RECOMMENDATION || '';
+  const rec = result.RECOMMENDATION;
+const reason = (rec && rec.REASON) || (rec && rec.RECOMMENDATION_REASON) || 
+               result.RECOMMENDATION_REASON || result.reason || 
+               (typeof rec === 'string' ? rec : '') || '';
   document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
 }
 

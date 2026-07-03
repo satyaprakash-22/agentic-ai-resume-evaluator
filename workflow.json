@@ -38,7 +38,7 @@
     {
       "parameters": {
         "promptType": "define",
-        "text": "=You are an expert technical recruiter.\n\nGiven the following:\n\nCANDIDATE SKILLS:\n{{ $('Basic LLM Chain').item.json.text }}\n\nJOB DESCRIPTION:\n{{ $json.body.job_description }}\n\nPlease provide:\n1. RELEVANCE SCORE: A score from 0-100 showing how well this candidate fits\n2. MATCHING SKILLS: Skills the candidate has that match the job\n3. GAP ANALYSIS: Important skills from the job description the candidate is missing\n4. RECOMMENDATION: Hire / Maybe / Reject with a 2 sentence reason\n\nRespond in JSON format only. No extra text, no markdown, no backticks.",
+        "text": "=You are an expert technical recruiter.\n\nGiven the following:\n\nCANDIDATE SKILLS:\n{{ $('Basic LLM Chain').item.json.text }}\n\nJOB DESCRIPTION:\n{{ $('Webhook').item.json.body.job_description }}\n\nPlease provide:\n1. RELEVANCE SCORE: A score from 0-100 showing how well this candidate fits\n2. MATCHING SKILLS: Skills the candidate has that match the job\n3. GAP ANALYSIS: Important skills from the job description the candidate is missing\n4. RECOMMENDATION: Hire / Maybe / Reject with a 2 sentence reason\n\nRespond in JSON format only. No extra text, no markdown, no backticks.",
         "batching": {}
       },
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
@@ -66,7 +66,7 @@
     },
     {
       "parameters": {
-        "model": "llama-3.1-8b-instant",
+        "model": "openai/gpt-oss-120b",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
@@ -86,7 +86,7 @@
     },
     {
       "parameters": {
-        "model": "llama-3.1-8b-instant",
+        "model": "openai/gpt-oss-120b",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
@@ -169,7 +169,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "9d76b356-97da-4ea3-84e7-4a67559bfd47",
+  "versionId": "c6ca194d-d53b-4936-9e18-385b14cf6aed",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "7f812f546d8433c7855636b11aa20883e5f29e17638245334703103b2eb3e997"

@@ -33,7 +33,7 @@ This is an **agentic pipeline** — each LLM call's output feeds as context into
 | Layer | Technology |
 |---|---|
 | Workflow Orchestration | n8n (self-hosted via Docker) |
-| LLM | Groq API — llama-3.3-70b-versatile |
+| LLM | Groq API — openai/gpt-oss-120b |
 | Frontend | HTML, CSS, Vanilla JavaScript |
 | PDF Parsing | PDF.js (client-side) |
 | DOCX Parsing | Mammoth.js (client-side) |

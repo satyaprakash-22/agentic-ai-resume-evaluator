@@ -605,7 +605,7 @@
 
         const rawText = await response.text();
         debugBox.textContent = 'RAW n8n RESPONSE:\n' + rawText;
-        debugBox.style.display = 'block';
+        debugBox.style.display = 'none';
 
         if (!rawText || rawText.trim() === '') {
           showError('n8n returned an empty response.\n\nFix:\n1. In n8n, make sure workflow is Published\n2. Open http://localhost:5678 and check workflow is Active');
@@ -692,14 +692,16 @@
       renderTags('matchingSkills', flattenSkills(result.MATCHING_SKILLS || result.matching_skills || []), 'skill-tag');
       renderTags('gapAnalysis', flattenSkills(result.GAP_ANALYSIS || result.gap_analysis || []), 'gap-tag');
 
-      const reason = result.RECOMMENDATION_REASON ||
-               result.recommendation_reason ||
+      const reason = result.recommendation_reason ||
+               result.RECOMMENDATION_REASON ||
+               result.recommendation ||
+               result.RECOMMENDATION ||
                result.reason ||
                result.notes ||
                (recValue && typeof recValue === 'object' ? JSON.stringify(recValue) : '') ||
-               (typeof recValue === 'string' ? recValue : '') || 
+               (typeof recValue === 'string' ? recValue : '') ||
                'No recruiter notes available.';
-      document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
+document.getElementById('reasonText').textContent = typeof reason === 'object' ? JSON.stringify(reason, null, 2) : reason;
     }
 
     function renderTags(elementId, data, tagClass) {
